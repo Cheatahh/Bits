@@ -49,6 +49,22 @@ println(t.length) // 1207
 ```
 After processing, the KSP processor will generate virtual accessors to manipulate the appropriate bits of the annotated property.
 
+## Supported Types
+The `@BitField` annotation works on & with all fixed-size primitive types, such as `Byte`, `Short`, `Int`, `Long` and their unsigned variants. Additionally, value-like wrappers which match the following requirements can also be used:
+- The wrapper class must contain a constructor with a single property declaration.
+- All other constructor parameters (except the target property) must feature default values.
+- The target property must be either `public` or `internal`.
+
+```kotlin
+// can be used as wrapper
+class A(val p1: Int) { .. }
+class B(val p1: Int, p2: Int = 42) { .. }
+// cannot be used as wrapper
+class C(val p1: Int, p2: Int) { .. }
+class D(val p1: Int, val p2: Int) { .. }
+class E(p1: Int, p2: Int) { .. }
+```
+
 ## How It Works
 - You annotate properties with @BitField to define bit layouts.
 - The KSP processor reads the annotations at compile-time and generates type-safe accessor methods.
