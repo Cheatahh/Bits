@@ -26,12 +26,19 @@ class BitsKSPPropertyProcessor(private val lookup: DataType.Lookup, private val 
      *
      * @param property The property declaration to process.
      * @param accessors The list of property accessors (getters/setters).
+     * @param unresolved A list of annotated nodes to move to the next processing round.
      * @return A [PropertyDesc] containing bit-property descriptors, or null if there are errors.
      */
-    fun process(property: KSPropertyDeclaration, accessors: List<KSPropertyAccessor>): PropertyDesc? {
+    fun process(property: KSPropertyDeclaration, accessors: List<KSPropertyAccessor>, unresolved: MutableList<KSAnnotated>): PropertyDesc? {
         val receiver = (property.extensionReceiver?.resolve()?.declaration ?: property.parentDeclaration)?.qualifiedName?.asString()
         val backendName = property.simpleName.asString()
         val backendTypeRef = property.type.resolve()
+        if(backendTypeRef.isError) {
+            // type is unknown
+            unresolved += property
+            unresolved += accessors
+            return null
+        }
         val backendType = lookup[backendTypeRef]
         if(backendType == null) {
             logger.error("Type ${backendTypeRef.declaration.simpleName.asString()} not supported.", property)

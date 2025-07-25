@@ -26,8 +26,10 @@ class BitsKSPPackageProcessor(private val packageName: String, private val looku
      *
      * @param symbols The list of annotated symbols to process.
      * @param gen The code generator used to create new files.
+     * @param unresolved A list of annotated nodes to move to the next processing round.
+     * @param processingRound The current round of annotation processing.
      */
-    fun process(symbols: List<KSAnnotated>, gen: CodeGenerator) {
+    fun process(symbols: List<KSAnnotated>, gen: CodeGenerator, unresolved: MutableList<KSAnnotated>, processingRound: Int) {
         logger.info("Processing package '$packageName' with ${symbols.size} symbol(s).")
         // ensure properties are accessible
         symbols.forEach {
@@ -38,11 +40,11 @@ class BitsKSPPackageProcessor(private val packageName: String, private val looku
         val properties = symbols.filterIsInstance<KSPropertyAccessor>().groupByTo(mutableMapOf()) { it.receiver }
         symbols.filterIsInstance<KSPropertyDeclaration>().forEach { properties.putIfAbsent(it, mutableListOf()) }
         // generated code is within single file
-        gen.createNewFile(Dependencies(true), packageName, "BitsAdapter", "kt").writer().use {
+        gen.createNewFile(Dependencies(true), packageName, "BitsAdapter${processingRound}", "kt").writer().use {
             it.write("@file:Suppress(\"RemoveRedundantCallsOfConversionMethods\",\"PackageDirectoryMismatch\",\"RemoveRedundantQualifierName\")\npackage $packageName\n")
             val processor = BitsKSPPropertyProcessor(lookup, logger)
             for((property, accessors) in properties)
-                processor.process(property, accessors)?.writeAll(it)
+                processor.process(property, accessors, unresolved)?.writeAll(it)
         }
     }
 }

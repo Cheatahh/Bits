@@ -16,21 +16,24 @@ import com.google.devtools.ksp.symbol.*
  * @property logger The logger for reporting messages and errors.
  */
 class BitsKSPProcessor(private val gen: CodeGenerator, private val logger: KSPLogger) : SymbolProcessor {
+
+    private var processingRound = 0
+
     /**
      * Processes symbols with the [BitField] annotation.
      *
      * Groups symbols by their package and invokes the package processor for each group.
      *
      * @param resolver The resolver for symbol lookup and type resolution.
-     * @return An empty list, as no deferred symbols are returned.
+     * @return A list of deferred annotated nodes.
      */
-    override fun process(resolver: Resolver): List<KSAnnotated> {
+    override fun process(resolver: Resolver) = buildList defer@ {
         val lookup = DataType.Lookup(resolver)
         resolver.getSymbolsWithAnnotation(BitField::class.java.name).groupBy {
             (getFile(it) as KSFile).packageName.asString()
         }.forEach { (packageName, symbols) ->
-            BitsKSPPackageProcessor(packageName, lookup, logger).process(symbols, gen)
+            BitsKSPPackageProcessor(packageName, lookup, logger).process(symbols, gen, this@defer, processingRound)
         }
-        return emptyList()
+        processingRound++
     }
 }
