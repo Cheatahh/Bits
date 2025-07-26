@@ -1,6 +1,7 @@
 package cheatahh.bits
 
 import com.google.devtools.ksp.symbol.KSNode
+import com.google.devtools.ksp.symbol.Visibility
 
 /**
  * Represents a virtual bit-property.
@@ -10,13 +11,15 @@ import com.google.devtools.ksp.symbol.KSNode
  * @property offset The bit offset for the property.
  * @property targetType The data type of the property's value.
  * @property node The original source node.
+ * @property visibility The visibility of the source node.
  */
 data class BitProperty (
     val name: String,
     val count: Int,
     var offset: Int,
     val targetType: DataType,
-    val node: KSNode
+    val node: KSNode,
+    val visibility: Visibility
 ) {
 
     internal val isOffsetDefined get() = offset != -1
@@ -28,8 +31,8 @@ data class BitProperty (
      * @return A BitPropertyDesc instance representing this property.
      */
     fun toDesc(codegen: PropertyCodeGen) = BitPropertyDesc(name,
-        count, offset,
-        count, offset,
+        count, offset, visibility,
+        count, offset, visibility,
         targetType, codegen
     )
 }

@@ -1,11 +1,8 @@
 package cheatahh.bits
 
-import com.google.devtools.ksp.getConstructors
-import com.google.devtools.ksp.getDeclaredProperties
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSType
-import com.google.devtools.ksp.symbol.KSValueParameter
 
 /**
  * Represents a data type abstraction for code generation and symbol processing.
@@ -44,6 +41,11 @@ sealed interface DataType {
     val bitCount: Int
 
     /**
+    * The qualified name of the target data type.
+    * */
+    val targetTypeQualifiedName: String
+
+    /**
      * Enum representing primitive data types and their conversion logic.
      *
      * @property toIntermediate Function to convert code to intermediate representation.
@@ -64,18 +66,19 @@ sealed interface DataType {
         Boolean(toIntermediate = { "(if($it) 1 else 0).toInt()" }, toTarget = { "(($it).toInt() != 0)" }, intermediateLiteralExtension = "", intermediateShiftPrefix = "u", bitCount = 1);
         override fun toIntermediate(code: String) = toIntermediate.invoke(code)
         override fun toTarget(code: String) = toTarget.invoke(code)
+        override val targetTypeQualifiedName get() = "kotlin.$name"
     }
 
     /**
      * Wrapper class for custom data types, delegating most behavior to the underlying property type.
      *
-     * @property className The name of the wrapper class.
+     * @property targetTypeQualifiedName The name of the wrapper class.
      * @property propertyName The name of the property being wrapped.
      * @property propertyType The underlying data type of the property.
      */
-    class Wrapper(private val className: String, private val propertyName: String, private val propertyType: DataType) : DataType by propertyType {
-        override fun toTarget(code: String) = "($className($propertyName = ${propertyType.toTarget(code)}))"
-        override fun toIntermediate(code: String) = "(${propertyType.toIntermediate("($code).$propertyName")})"
+    class Wrapper(override val targetTypeQualifiedName: String, private val propertyName: String, private val propertyType: DataType) : DataType by propertyType {
+        override fun toTarget(code: String) = "($targetTypeQualifiedName(${propertyName.escapeLiteral()} = ${propertyType.toTarget(code)}))"
+        override fun toIntermediate(code: String) = "(${propertyType.toIntermediate("($code).${propertyName.escapeLiteral()}")})"
     }
 
     /**
@@ -107,18 +110,10 @@ sealed interface DataType {
 
         private fun createWrapperOrNull(type: KSType): Wrapper? {
             val classDeclaration = type.declaration as? KSClassDeclaration ?: return null
-            val propertyDeclaration = classDeclaration.getConstructors().firstNotNullOfOrNull { it ->
-                fun KSValueParameter.isProperty() = isVal || isVar
-                if(it.parameters.count(KSValueParameter::isProperty) != 1) return@firstNotNullOfOrNull null
-                val parameter = it.parameters.first(KSValueParameter::isProperty)
-                val property = classDeclaration.getDeclaredProperties().first { it.simpleName == parameter.name }
-                return@firstNotNullOfOrNull if(
-                    it.parameters.all { it.hasDefault || it.isProperty() } && property.isEffectivelyPublicOrInternal())
-                    property else null
-            } ?: return null
+            val (propertyDeclaration, _) = classDeclaration.getPropertyOfApplicableConstructor() ?: return null
             val propertyType = get(propertyDeclaration.type.resolve()) ?: return null
             return Wrapper(
-                classDeclaration.qualifiedName!!.asString(),
+                classDeclaration.qualifiedName!!.asString().escapeLiteral(),
                 propertyDeclaration.simpleName.asString(),
                 propertyType
             )

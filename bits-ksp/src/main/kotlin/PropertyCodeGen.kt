@@ -27,7 +27,7 @@ sealed class PropertyCodeGen {
      * @param property The bit property descriptor.
      */
     fun write(out: OutputStreamWriter, desc: PropertyDesc, property: BitPropertyDesc) {
-        out.write("$propertyKeyword ${if(desc.receiver != null) "${desc.receiver}." else ""}${property.name} ${code(desc, property)}\n")
+        out.write("${property.getterVisibility.name.lowercase()} $propertyKeyword ${if(desc.receiver != null) "${desc.receiver.escapeLiteral()}." else ""}${property.name.escapeLiteral()} ${code(desc, property)}\n")
     }
 
     /**
@@ -44,7 +44,7 @@ sealed class PropertyCodeGen {
          * @param property The bit property descriptor.
          * @return The generated getter code as a String.
          */
-        override fun code(desc: PropertyDesc, property: BitPropertyDesc) = "get() = ${property.targetType.toTarget("${desc.backendType.toIntermediate(desc.backendName)
+        override fun code(desc: PropertyDesc, property: BitPropertyDesc) = "get() = ${property.targetType.toTarget("${desc.backendType.toIntermediate(desc.backendName.escapeLiteral())
         }.${desc.backendType.intermediateShiftPrefix
         }shr(${property.getterBitOffset
         }).and(0b${getBitMask(property.getterBitCount)
@@ -62,20 +62,22 @@ sealed class PropertyCodeGen {
          * @param property The bit property descriptor.
          * @return The generated setter code as a String.
          */
-        override fun code(desc: PropertyDesc, property: BitPropertyDesc) = "get(): ${property.targetType
+        override fun code(desc: PropertyDesc, property: BitPropertyDesc) = "get(): ${property.targetType.targetTypeQualifiedName.escapeLiteral()
             } = throw UnsupportedOperationException(\"This property only supports writing.\"); ${setterCode(desc, property)
             }"
-        internal fun setterCode(desc: PropertyDesc, property: BitPropertyDesc) = "set(${getFrontendName(desc)}) { ${desc.backendName
-            } = ${desc.backendType.toTarget("${desc.backendType.toIntermediate(desc.backendName)
+        internal fun setterCode(desc: PropertyDesc, property: BitPropertyDesc) = "${property.setterVisibility.name.lowercase()} set(${getFrontendName(desc).escapeLiteral()}) { ${desc.backendName.escapeLiteral()
+            } = ${desc.backendType.toTarget("${desc.backendType.toIntermediate(desc.backendName.escapeLiteral())
             }.and(0b${getBitMask(property.setterBitCount)
             }${desc.backendType.intermediateLiteralExtension
             }.shl(${property.setterBitOffset
-            }).inv()).or(${desc.backendType.toIntermediate("${property.targetType.toIntermediate(getFrontendName(desc))
+            }).inv()).or(${setterValue(desc, property, getFrontendName(desc))})")
+            } }"
+        internal fun setterValue(desc: PropertyDesc, property: BitPropertyDesc, frontendName: String) = "${desc.backendType.toIntermediate("${
+            property.targetType.toIntermediate(frontendName.escapeLiteral())
             }.and(0b${getBitMask(property.setterBitCount)
             }${property.targetType.intermediateLiteralExtension
             })")}.shl(${property.setterBitOffset
-            }))")
-            } }"
+            })"
         private fun getFrontendName(desc: PropertyDesc) = if(desc.backendName == "value") "value_" else "value"
     }
 

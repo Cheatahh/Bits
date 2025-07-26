@@ -4,10 +4,8 @@ import com.google.devtools.ksp.processing.CodeGenerator
 import com.google.devtools.ksp.processing.Dependencies
 import com.google.devtools.ksp.processing.KSPLogger
 import com.google.devtools.ksp.symbol.KSAnnotated
-import com.google.devtools.ksp.symbol.KSModifierListOwner
 import com.google.devtools.ksp.symbol.KSPropertyAccessor
 import com.google.devtools.ksp.symbol.KSPropertyDeclaration
-import kotlin.collections.iterator
 
 /**
  * Processes all bitfield-related properties and accessors within a given package for code generation.
@@ -31,20 +29,25 @@ class BitsKSPPackageProcessor(private val packageName: String, private val looku
      */
     fun process(symbols: List<KSAnnotated>, gen: CodeGenerator, unresolved: MutableList<KSAnnotated>, processingRound: Int) {
         logger.info("Processing package '$packageName' with ${symbols.size} symbol(s).")
-        // ensure properties are accessible
-        symbols.forEach {
-            if(!(it as KSModifierListOwner).isEffectivelyPublicOrInternal())
-                logger.error("Property must be public or internal within package '$packageName'.", it)
-        }
         // group annotated nodes by property
         val properties = symbols.filterIsInstance<KSPropertyAccessor>().groupByTo(mutableMapOf()) { it.receiver }
         symbols.filterIsInstance<KSPropertyDeclaration>().forEach { properties.putIfAbsent(it, mutableListOf()) }
         // generated code is within single file
-        gen.createNewFile(Dependencies(true), packageName, "BitsAdapter${processingRound}", "kt").writer().use {
-            it.write("@file:Suppress(\"RemoveRedundantCallsOfConversionMethods\",\"PackageDirectoryMismatch\",\"RemoveRedundantQualifierName\")\npackage $packageName\n")
+        gen.createNewFile(Dependencies(true), packageName, "BitsAdapter${processingRound}", "kt").writer().use { stream ->
+            stream.write("""@file:Suppress(
+                |"RemoveRedundantCallsOfConversionMethods",
+                |"PackageDirectoryMismatch",
+                |"RemoveRedundantQualifierName",
+                |"RedundantVisibilityModifier",
+                |"FunctionName",
+                |"LocalVariableName",
+                |"RemoveRedundantBackticks"
+                |)
+                |package $packageName
+                |""".trimMargin())
             val processor = BitsKSPPropertyProcessor(lookup, logger)
             for((property, accessors) in properties)
-                processor.process(property, accessors, unresolved)?.writeAll(it)
+                processor.process(property, accessors, unresolved).forEach { it.writeTo(stream) }
         }
     }
 }

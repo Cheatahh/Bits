@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "cheatahh.bits"
-version = "0.2-dev"
+version = "0.3-dev"
 
 repositories {
     mavenCentral()

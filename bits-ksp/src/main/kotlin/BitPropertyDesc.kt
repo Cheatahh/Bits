@@ -1,5 +1,7 @@
 package cheatahh.bits
 
+import com.google.devtools.ksp.symbol.Visibility
+
 /**
  * Describes a bit-property for code generation, including getter and setter information.
  *
@@ -15,8 +17,10 @@ data class BitPropertyDesc (
     val name: String,
     val getterBitCount: Int,
     var getterBitOffset: Int,
+    val getterVisibility: Visibility,
     val setterBitCount: Int,
     var setterBitOffset: Int,
+    val setterVisibility: Visibility,
     val targetType: DataType,
     val codegen: PropertyCodeGen
 )

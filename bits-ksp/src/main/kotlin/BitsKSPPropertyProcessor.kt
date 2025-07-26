@@ -1,15 +1,8 @@
 package cheatahh.bits
 
+import com.google.devtools.ksp.getVisibility
 import com.google.devtools.ksp.processing.KSPLogger
-import com.google.devtools.ksp.symbol.KSAnnotated
-import com.google.devtools.ksp.symbol.KSAnnotation
-import com.google.devtools.ksp.symbol.KSPropertyAccessor
-import com.google.devtools.ksp.symbol.KSPropertyDeclaration
-import com.google.devtools.ksp.symbol.KSPropertyGetter
-import com.google.devtools.ksp.symbol.KSType
-import kotlin.collections.iterator
-import kotlin.collections.plusAssign
-import kotlin.sequences.forEach
+import com.google.devtools.ksp.symbol.*
 
 /**
  * Processes bitfield property annotations and generates property descriptors for code generation.
@@ -29,7 +22,7 @@ class BitsKSPPropertyProcessor(private val lookup: DataType.Lookup, private val 
      * @param unresolved A list of annotated nodes to move to the next processing round.
      * @return A [PropertyDesc] containing bit-property descriptors, or null if there are errors.
      */
-    fun process(property: KSPropertyDeclaration, accessors: List<KSPropertyAccessor>, unresolved: MutableList<KSAnnotated>): PropertyDesc? {
+    fun process(property: KSPropertyDeclaration, accessors: List<KSPropertyAccessor>, unresolved: MutableList<KSAnnotated>): List<WritableDesc> {
         val receiver = (property.extensionReceiver?.resolve()?.declaration ?: property.parentDeclaration)?.qualifiedName?.asString()
         val backendName = property.simpleName.asString()
         val backendTypeRef = property.type.resolve()
@@ -37,12 +30,12 @@ class BitsKSPPropertyProcessor(private val lookup: DataType.Lookup, private val 
             // type is unknown
             unresolved += property
             unresolved += accessors
-            return null
+            return emptyList()
         }
         val backendType = lookup[backendTypeRef]
         if(backendType == null) {
             logger.error("Type ${backendTypeRef.declaration.simpleName.asString()} not supported.", property)
-            return null
+            return emptyList()
         }
         val getterProperties = mutableSetOf<BitProperty>()
         val setterProperties = mutableSetOf<BitProperty>()
@@ -58,7 +51,7 @@ class BitsKSPPropertyProcessor(private val lookup: DataType.Lookup, private val 
         removeImplicitlyDefinedWildcards(getterProperties)
         removeImplicitlyDefinedWildcards(setterProperties)
         // if property contains duplicate virtual accessors -> error
-        if(checkForDuplicates(setterProperties) || checkForDuplicates(getterProperties)) return null
+        if(checkForDuplicates(setterProperties) || checkForDuplicates(getterProperties)) return emptyList()
 
         val commonLabels = getterProperties.map(BitProperty::name).intersect(setterProperties.map(BitProperty::name))
         // make sure getter & setter have same offset, type & size
@@ -75,14 +68,14 @@ class BitsKSPPropertyProcessor(private val lookup: DataType.Lookup, private val 
             val setter = setterProperties.first { it.name == label }
             if(getter.targetType != setter.targetType) {
                 logger.error("Bit property '$label' getter and setter must match data types.", property)
-                return null
+                return emptyList()
             }
             if(getter.offset != setter.offset || getter.count != setter.count) {
                 logger.warn("Bit property '$label' getter and setter should match offset and size.", property)
             }
             properties += BitPropertyDesc(label,
-                getter.count, getter.offset,
-                setter.count, setter.offset,
+                getter.count, getter.offset, getter.visibility,
+                setter.count, setter.offset, setter.visibility,
                 getter.targetType,
                 PropertyCodeGen.All
             )
@@ -94,12 +87,24 @@ class BitsKSPPropertyProcessor(private val lookup: DataType.Lookup, private val 
         logger.info("Property ${if(receiver != null) "$receiver." else ""}$backendName:$backendType with \n${
             properties.joinToString(separator = "\n") { "\t${it.name}:${it.targetType} ${if(it.codegen != PropertyCodeGen.Setter) "GET[${it.getterBitOffset}:${it.getterBitCount}]" else ""}${if(it.codegen != PropertyCodeGen.Getter) "SET[${it.setterBitOffset}:${it.setterBitCount}]" else ""}" }
         }", property)
-        return PropertyDesc (
+        val desc = PropertyDesc (
             receiver,
             backendName,
             backendType,
             properties
         )
+        return buildList {
+            this += desc
+            val classDecl = property.parentDeclaration as? KSClassDeclaration ?: return@buildList
+            if(!classDecl.isNotNestedOrInner()) return@buildList
+            val (_, constructorDecl) = classDecl.getPropertyOfApplicableConstructor(property.simpleName.asString()) ?: return@buildList
+            this += ConstructorDesc (
+                classDecl.simpleName.asString(),
+                classDecl.getSimpleQualifier(),
+                constructorDecl.getVisibility(),
+                desc
+            )
+        }
     }
 
     /**
@@ -188,9 +193,10 @@ class BitsKSPPropertyProcessor(private val lookup: DataType.Lookup, private val 
      *
      * @param backendType The backend data type.
      * @param lookup The data type lookup utility.
+     * @param visibility The visibility of the annotated target.
      * @return A [BitProperty] instance, or null if validation fails.
      */
-    private fun KSAnnotation.toBits(backendType: DataType, lookup: DataType.Lookup) = BitProperty (
+    private fun KSAnnotation.toBits(backendType: DataType, lookup: DataType.Lookup, visibility: Visibility) = BitProperty (
         arguments.first { it.name?.asString() == "name" }.value as String,
         (arguments.first { it.name?.asString() == "count" }.value as UByte).toInt(),
         (arguments.first { it.name?.asString() == "offset" }.value as Byte).toInt(),
@@ -203,7 +209,8 @@ class BitsKSPPropertyProcessor(private val lookup: DataType.Lookup, private val 
             }
             type
         },
-        this
+        this,
+        visibility
     ).takeIf {
         when {
             it.count > it.targetType.bitCount -> {
@@ -226,8 +233,12 @@ class BitsKSPPropertyProcessor(private val lookup: DataType.Lookup, private val 
      * @return A list of [BitProperty]s found in the annotations.
      */
     private fun KSAnnotated.getBits(backendType: DataType, lookup: DataType.Lookup) = annotations.mapNotNull {
+        val visibility = checkVisibility() ?: run {
+            logger.error("Property must be public or internal within package.", this@getBits)
+            return@mapNotNull null
+        }
         it.takeIf {
             it.annotationType.resolve().declaration.qualifiedName?.asString() == BitField::class.java.name
-        }?.toBits(backendType, lookup)
+        }?.toBits(backendType, lookup, visibility)
     }
 }

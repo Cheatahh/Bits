@@ -15,13 +15,14 @@ data class PropertyDesc (
     val backendName: String,
     val backendType: DataType,
     val properties: List<BitPropertyDesc>
-) {
+) : WritableDesc {
     /**
      * Writes all properties using their code generation strategy to the provided output stream.
      *
      * @param out The OutputStreamWriter to write the generated code to.
      */
-    fun writeAll(out: OutputStreamWriter) {
+    override fun writeTo(out: OutputStreamWriter) {
         for(property in properties) property.codegen.write(out, this, property)
     }
 }
+
