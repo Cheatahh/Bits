@@ -46,8 +46,9 @@ val t = Token(5309480349674895u)
 println(t.type) // 1423
 println(t.offset) // 1013877707
 println(t.length) // 1207
+val t2 = Token(/*type*/ 1u, /*offset*/ 2u, /*length*/ 3u)
 ```
-After processing, the KSP processor will generate virtual accessors to manipulate the appropriate bits of the annotated property.
+After processing, the KSP processor will generate virtual accessors to manipulate the appropriate bits of the annotated property. If applicable, a constructor for a given property will be generated.
 
 ## Supported Types
 The `@BitField` annotation works on & with all fixed-size primitive types, such as `Byte`, `Short`, `Int`, `Long` and their unsigned variants. Additionally, value-like wrappers which match the following requirements can also be used:
