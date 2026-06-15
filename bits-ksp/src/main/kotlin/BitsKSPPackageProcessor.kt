@@ -41,7 +41,8 @@ class BitsKSPPackageProcessor(private val packageName: String, private val looku
                 |"RedundantVisibilityModifier",
                 |"FunctionName",
                 |"LocalVariableName",
-                |"RemoveRedundantBackticks"
+                |"RemoveRedundantBackticks",
+                |"REDUNDANT_CALL_OF_CONVERSION_METHOD"
                 |)
                 |${if(packageName.isNotBlank()) "package $packageName" else ""}
                 |""".trimMargin())
