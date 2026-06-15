@@ -43,7 +43,7 @@ class BitsKSPPackageProcessor(private val packageName: String, private val looku
                 |"LocalVariableName",
                 |"RemoveRedundantBackticks"
                 |)
-                |package $packageName
+                |${if(packageName.isNotBlank()) "package $packageName" else ""}
                 |""".trimMargin())
             val processor = BitsKSPPropertyProcessor(lookup, logger)
             for((property, accessors) in properties)
