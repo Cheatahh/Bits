@@ -1,9 +1,5 @@
-val kotlinVersion = "2.2.0"
-val kspVersion = "2.0.2"
-
 plugins {
-    val kotlinVersion = "2.2.0"
-    kotlin("jvm") version kotlinVersion
+    kotlin("jvm") version "2.4.0"
 }
 
 group = "cheatahh.bits"
@@ -14,6 +10,6 @@ repositories {
 }
 
 dependencies {
-    implementation("com.google.devtools.ksp:symbol-processing-api:$kotlinVersion-$kspVersion")
+    implementation("com.google.devtools.ksp:symbol-processing-api:2.3.9")
     implementation(project(":bits-lib"))
 }
