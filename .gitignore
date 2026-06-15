@@ -1,7 +1,5 @@
 /.idea/
 /gradle/
-/gradlew
-/gradlew.bat
 /.gradle/
 /build/
 /bits-lib/build/
