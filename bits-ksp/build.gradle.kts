@@ -8,9 +8,19 @@ version = "1.0.0"
 
 publishing {
     publications {
-        create<MavenPublication>("lib") {
-            from(components["java"])
+        create<MavenPublication>("maven") {
+            from(components["kotlin"])
             artifactId = "bits-ksp"
+        }
+    }
+    repositories {
+        maven {
+            name = "GitHubPackages"
+            url = uri("https://maven.pkg.github.com/cheatahh/Bits")
+            credentials {
+                username = System.getenv("GITHUB_ACTOR")
+                password = System.getenv("GITHUB_TOKEN")
+            }
         }
     }
 }
