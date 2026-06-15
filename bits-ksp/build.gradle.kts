@@ -15,5 +15,5 @@ repositories {
 
 dependencies {
     implementation("com.google.devtools.ksp:symbol-processing-api:$kotlinVersion-$kspVersion")
-    implementation(project(":bits"))
+    implementation(project(":bits-lib"))
 }

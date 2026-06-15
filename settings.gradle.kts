@@ -1,3 +1,3 @@
 rootProject.name = "bits"
-include("bits")
+include("bits-lib")
 include("bits-ksp")
