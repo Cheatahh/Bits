@@ -53,7 +53,7 @@ class BitsKSPPropertyProcessor(private val lookup: DataType.Lookup, private val 
         // if property contains duplicate virtual accessors -> error
         if(checkForDuplicates(setterProperties) || checkForDuplicates(getterProperties)) return emptyList()
 
-        val commonLabels = getterProperties.map(BitProperty::name).intersect(setterProperties.map(BitProperty::name))
+        val commonLabels = getterProperties.map(BitProperty::name).intersect(setterProperties.map(BitProperty::name).toSet())
         // make sure getter & setter have same offset, type & size
         syncDefinedWildcards(commonLabels, getterProperties, setterProperties)
         syncDefinedWildcards(commonLabels, setterProperties, getterProperties)
@@ -196,11 +196,11 @@ class BitsKSPPropertyProcessor(private val lookup: DataType.Lookup, private val 
      * @param visibility The visibility of the annotated target.
      * @return A [BitProperty] instance, or null if validation fails.
      */
-    private fun KSAnnotation.toBits(backendType: DataType, lookup: DataType.Lookup, visibility: Visibility) = BitProperty (
+    private fun KSAnnotation.toBits(backendType: DataType, lookup: DataType.Lookup, visibility: Visibility): BitProperty? = BitProperty (
         arguments.first { it.name?.asString() == "name" }.value as String,
         (arguments.first { it.name?.asString() == "count" }.value as UByte).toInt(),
         (arguments.first { it.name?.asString() == "offset" }.value as Byte).toInt(),
-        lookup[arguments.first { it.name?.asString() == "type" }.value as KSType, backendType].let nullcheck@ { type ->
+        lookup[arguments.first { it.name?.asString() == "type" }.value as KSType, backendType].let check@ { type ->
             if(type == null) {
                 logger.error("Type ${
                     (arguments.first { it.name?.asString() == "type" }.value as KSType).declaration.simpleName.asString()

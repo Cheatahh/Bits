@@ -106,7 +106,7 @@ sealed interface DataType {
          * @param backendType The backend DataType to use if type is kotlin.Any.
          * @return The resolved DataType.
          */
-        operator fun get(type: KSType, backendType: DataType? = null) = if(type == anyType) backendType else ksTypeToDataType.getOrPut(type) { createWrapperOrNull(type) ?: return@get null }
+        operator fun get(type: KSType, backendType: DataType? = null): DataType? = if(type == anyType) backendType else ksTypeToDataType.getOrPut(type) { createWrapperOrNull(type) ?: return@get null }
 
         private fun createWrapperOrNull(type: KSType): Wrapper? {
             val classDeclaration = type.declaration as? KSClassDeclaration ?: return null
