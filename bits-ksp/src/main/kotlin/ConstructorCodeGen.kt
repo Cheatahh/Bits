@@ -30,6 +30,8 @@ object ConstructorCodeGen {
     fun write(out: OutputStreamWriter, desc: ConstructorDesc) {
         out.write("${desc.receiverVisibility.name.lowercase()} fun ${desc.qualifiedReceiver.escapeLiteral()
             }(${parameterCode(desc.propertyDesc)
-            }) = ${desc.receiver.escapeLiteral()}(${desc.propertyDesc.backendName.escapeLiteral()} = ${valueCode(desc.propertyDesc)})")
+            }) = ${desc.receiver.escapeLiteral()}(${desc.propertyDesc.backendName.escapeLiteral()} = (${valueCode(desc.propertyDesc)
+            })${desc.propertyDesc.backendType.intermediateLiteralExtension
+            })\n")
     }
 }
