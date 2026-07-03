@@ -8,6 +8,8 @@ import java.io.OutputStreamWriter
 sealed class PropertyCodeGen {
 
     protected fun getBitMask(count: Int) = "1".repeat(count)
+    protected fun get1BitMask(offset: Int) = "1${"0".repeat(offset)}"
+
     protected abstract val propertyKeyword: String
 
     /**
@@ -44,12 +46,23 @@ sealed class PropertyCodeGen {
          * @param property The bit property descriptor.
          * @return The generated getter code as a String.
          */
-        override fun code(desc: PropertyDesc, property: BitPropertyDesc) = "get() = ${property.targetType.toTarget("${desc.backendType.toIntermediate(desc.backendName.escapeLiteral())
-        }.${desc.backendType.intermediateShiftPrefix
-        }shr(${property.getterBitOffset
-        }).and(0b${getBitMask(property.getterBitCount)
-        }${desc.backendType.intermediateLiteralExtension
-        })")}"
+        override fun code(desc: PropertyDesc, property: BitPropertyDesc) = "get() = ${
+            if(property.targetType != DataType.Primitive.Boolean) 
+                property.targetType.toTarget("${
+                    desc.backendType.toIntermediate(desc.backendName.escapeLiteral())
+                    }.${desc.backendType.intermediateShiftPrefix
+                    }shr(${property.getterBitOffset
+                    }).and(0b${getBitMask(property.getterBitCount)
+                    }${desc.backendType.intermediateLiteralExtension
+                    })"
+                )
+            else
+                "${desc.backendType.toIntermediate(desc.backendName.escapeLiteral())
+                }.and(0b${get1BitMask(property.getterBitOffset)
+                }${desc.backendType.intermediateLiteralExtension
+                }) != 0${desc.backendType.intermediateLiteralExtension
+                }"
+        }"
     }
     object Setter : PropertyCodeGen() {
 
